@@ -1,6 +1,5 @@
 package code;
 
-import java.awt.Image;
 import java.awt.*;
 import java.awt.geom.*;
 
@@ -397,6 +396,5 @@ public class Sprite {
     	xoff = x;
     	yoff = y;
     }
-    
-
+  
 }

@@ -31,7 +31,7 @@ import java.awt.*;
 public class Game extends GameCore
 {
 	// Useful game constants
-	static int screenWidth = 512;
+	static int screenWidth = 512; 
 	static int screenHeight = 384;
 
     float 	lift = 0.05f;
@@ -40,8 +40,7 @@ public class Game extends GameCore
     // Game state flags
     private boolean flap = false;
     private boolean pause = true;
-    //boolean paused = false;
-    private static boolean fullScreen = false; //Checks if application full-screen across all windows
+    private boolean debugMode = true;
     
     // Game resources
     Animation landing;
@@ -62,10 +61,7 @@ public class Game extends GameCore
     private int fg1location = 0;
     private int fg2location;
     
-    private int xo = 0;
-    private int yo = 0;
-    
-    
+    private static int offsetMapX = 200;
    
     /**
 	 * The obligatory main method that creates
@@ -93,6 +89,8 @@ public class Game extends GameCore
         
         setSize(tmap.getPixelWidth()/4, tmap.getPixelHeight());
         setVisible(true);
+        setResizable(false);
+        setLocationRelativeTo(null);
 
       	//Parallax vector images from https://raventale.itch.io/parallax-background
 		try {
@@ -107,7 +105,6 @@ public class Game extends GameCore
 			bgImage4 = ImageIO.read(new File("src/images/Desert.png"));
 			bgImage4 = bgImage4.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -151,7 +148,6 @@ public class Game extends GameCore
     public void initialiseGame()
     {
     	total = 0;
-    	      
         player.setX(64);
         player.setY(200);
         player.setVelocityX(0);
@@ -188,38 +184,43 @@ public class Game extends GameCore
         
         g.drawImage(bgImage4, fg1location, 0, null);
         g.drawImage(bgImage4, fg2location, 0, null);
-        
-        bg1location--; bg2location--;
-        fg1location-=3; fg2location-=3;
-        
-        if(bg1location<-screenWidth) bg1location = screenWidth;
-        if(bg2location<-screenWidth) bg2location = screenWidth;
-        if(fg1location<-screenWidth) fg1location = screenWidth;
-        if(fg2location<-screenWidth) fg2location = screenWidth;
-        
+         
         // Apply offsets to sprites then draw them
         for (Sprite s: clouds)
         {
-        	s.setOffsets(0,yo);
+        	s.setOffsets(0,0);
         	s.draw(g);
         }
-
-        // Apply offsets to player and draw 
-        player.setOffsets(0, yo);
-        player.draw(g);
-        player.drawBoundingCircle(g);
-                
-        // Apply offsets to tile map and draw  it, move background left
-        tmap.draw(g,xo,yo);    
         
-        xo--;
+        player.draw(g);
+           
+        // Apply offsets to tile map and draw  it, move background left
+        tmap.draw(g,offsetMapX,0); 
+        
+        if(pause == false) {
+        	offsetMapX--;
+        	
+    	    bg1location--; bg2location--;
+    	    fg1location-=3; fg2location-=3;
+            
+            if(bg1location<-screenWidth) bg1location = screenWidth;
+            if(bg2location<-screenWidth) bg2location = screenWidth;
+            if(fg1location<-screenWidth) fg1location = screenWidth;
+            if(fg2location<-screenWidth) fg2location = screenWidth;
+        }
         
         // Show score and status information
         String msg = String.format("Score: %d", total/100);
         g.setColor(Color.white);
         g.drawString(msg, getWidth() - 80, 50);
         
-        
+        // debug mode
+        if(debugMode) {
+        	player.drawBoundingCircle(g);
+	        String debug = "FPS: " + (int)getFPS() + "     X: " + ((int)player.getX() + offsetMapX) + "     Y: " + (int)player.getY();
+	        g.setColor(Color.white);
+	        g.drawString(debug, 40, 50);
+        }  
     }
 
     /**
@@ -229,25 +230,27 @@ public class Game extends GameCore
      */    
     public void update(long elapsed)
     {
-        // Make adjustments to the speed of the sprite due to gravity
-        player.setVelocityY(player.getVelocityY()+(gravity*elapsed));   	
-       	player.setAnimationSpeed(1.0f);
-       	
-       	if (flap) 
-       	{
-       		player.setAnimationSpeed(1.8f);
-       		player.setVelocityY(-0.075f);
-       	}
-                
-       	for (Sprite s: clouds)
-       		s.update(elapsed);
-       	
+    	player.setAnimationSpeed(1.0f);
         // Now update the sprites animation and position
         player.update(elapsed);
-       
-        // Then check for any collisions that may have occurred
-        handleScreenEdge(player, tmap, elapsed);
-        checkTileCollision(player, tmap);
+        
+    	if(pause == false) {	
+	        // Make adjustments to the speed of the sprite due to gravity
+	        player.setVelocityY(player.getVelocityY()+(gravity*elapsed));   	
+	       
+	       	if (flap) 
+	       	{
+	       		player.setAnimationSpeed(1.8f);
+	       		player.setVelocityY(-0.075f);
+	       	}
+	                
+	       	for (Sprite s: clouds)
+	       		s.update(elapsed);
+	       
+	        // Then check for any collisions that may have occurred
+	        handleScreenEdge(player, tmap, elapsed);
+	        checkTileCollision(player, tmap);    
+    	}
     }
     
     
@@ -293,29 +296,9 @@ public class Game extends GameCore
     	
     	if (key == KeyEvent.VK_ESCAPE) stop();
     	
-    	if (key == KeyEvent.VK_UP) flap = true;
-    	if (key == KeyEvent.VK_F) { //Toggle fullscreen
-    		dispose();
-    		Game gm = new Game();
-	    	Thread th = new Thread(new Runnable() {
-	    		public void run(){
-	    			if(fullScreen == false) {
-	    				System.out.println(fullScreen);
-	    				fullScreen = true;
-	    		        Dimension size = Toolkit.getDefaultToolkit().getScreenSize();
-	    				screenWidth = (int) size.getWidth();
-	    				screenHeight = (int) size.getHeight();
-	    			} else {
-	    				System.out.println(fullScreen);
-	    				fullScreen = false;
-	        			screenWidth = 512; screenHeight = 384;
-	        		} 
-    				gm.init();
-    				gm.run(fullScreen, screenWidth, screenHeight);
-	    		}});
-	    		th.start();
-    	}
-    	
+    	if (key == KeyEvent.VK_UP) {
+    		flap = true; 
+    	}  	
     	if (key == KeyEvent.VK_S)
     	{
     		// Example of playing a sound as a thread
@@ -337,49 +320,70 @@ public class Game extends GameCore
      * @param tmap		The tile map to check 
      */
 
-    public void checkTileCollision(Sprite s, TileMap tmap)
-    {
-    	// Take a note of a sprite's current position
-    	float sx = s.getX();
-    	float sy = s.getY();
-    	
+	public void checkTileCollision(Sprite s, TileMap tmap)
+    {    	
+
+    	float radius = s.getRadius();
+    	float sx = s.getX() + radius - offsetMapX;
+    	float sy = s.getY() + radius;  
     	// Find out how wide and how tall a tile is
     	float tileWidth = tmap.getTileWidth();
     	float tileHeight = tmap.getTileHeight();
     	
-    	// Divide the sprite’s x coordinate by the width of a tile, to get
-    	// the number of tiles across the x axis that the sprite is positioned at 
-    	int	xtile = (int)(sx / tileWidth);
-    	// The same applies to the y coordinate
-    	int ytile = (int)(sy / tileHeight);
+    	char ch;
+    	int xtile, ytile;
+    	double x, y;
+    	for(int angle = 0; angle < 6; angle++) {
+    		x = sx + (radius * Math.cos(Math.toRadians(angle * 60)));
+    		y = sy + (radius * Math.sin(Math.toRadians(angle * 60)));
+        	xtile = (int)(x /  tileWidth);
+        	ytile = (int)(y / tileHeight);
+    		ch = tmap.getTileChar(xtile, ytile);
+    		if(ch == '.') continue;	
+        	if (ch == 'p' || ch == 'b' || ch == 't') {
+        		handleCollison(s);
+    	        break;
+    	    } 
+        	if(ch == '?'){
+				if(offsetMapX > -500) {
+					continue;
+				}
+	    		s.setVelocityY(0);
+	    		s.setVelocityX(0.3f);
+	            TimerTask timerTask = new TimerTask() {
+	                @Override
+	                public void run() {
+	                	//Start new level once animation done or exit
+	                	System.exit(0); //TODO change to next level
+	                }
+	            };
+	            Timer timer = new Timer("MyTimer");
+	            //After two seconds, execute timer function
+	            timer.scheduleAtFixedRate(timerTask, 2000, 30000);
+				break;
+    	    }
+        	
+        }
+    }
     	
-    	// What tile character is at the top left of the sprite s?
-    	char ch = tmap.getTileChar(xtile, ytile);
-    	
-    	
-    	if (ch != '.') // If it's not a dot (empty space), handle it
-    	{
-    		// Here we just stop the sprite. 
-    		s.stop();
-    		while(ch != '.') {
-    			
-    			s.setY(sx--);
-    		}
-    		// You should move the sprite to a position that is not colliding
-    	}
-    	
-    	// We need to consider the other corners of the sprite
-    	// The above looked at the top left position, let's look at the bottom left.
-    	xtile = (int)(sx / tileWidth);
-    	ytile = (int)((sy + s.getHeight())/ tileHeight);
-    	ch = tmap.getTileChar(xtile, ytile);
-    	
-    	// If it's not empty space
-     	if (ch != '.') 
-    	{
-    		// Let's make the sprite bounce
-    		s.setVelocityY(-s.getVelocityY()); // Reverse velocity 
-    	}
+
+    //If collision happens
+    private void handleCollison(Sprite s) {
+		pause = true;
+        TimerTask timerTask2 = new TimerTask() {
+            @Override
+            public void run() {
+            	//unpauses sprite
+            	pause = false;
+            }
+        };
+        Timer timer2 = new Timer("MyTimer");
+        //After one seconds, execute timer function
+        timer2.scheduleAtFixedRate(timerTask2, 1000, 30000);
+		s.stop();
+		offsetMapX = offsetMapX + s.getWidth() * 3;
+		s.setY(getWidth()/2 - s.getHeight());
+		System.out.println("COLLISION");
     }
 
 
@@ -393,6 +397,9 @@ public class Game extends GameCore
 		{
 			case KeyEvent.VK_ESCAPE : stop(); break;
 			case KeyEvent.VK_UP     : flap = false; break;
+			case KeyEvent.VK_1 		: debugMode = !debugMode; System.out.println(debugMode); break;
+			case KeyEvent.VK_2 		: offsetMapX = -1650; break;
+			case KeyEvent.VK_SPACE  : pause = !pause; player.stop(); break;
 			default :  break;
 		}
 	}

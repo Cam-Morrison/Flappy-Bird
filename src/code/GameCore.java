@@ -81,8 +81,7 @@ public abstract class GameCore extends JFrame implements KeyListener {
      * @param yres	Height in pixels of game screen
      */
     private void init(boolean full, int xres, int yres) {
-    	
-    	setSize(xres, yres);
+
         setVisible(true);
         addKeyListener(this);
         setFont(new Font("Dialog", Font.PLAIN, FONT_SIZE));
