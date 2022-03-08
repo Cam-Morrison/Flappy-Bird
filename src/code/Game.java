@@ -3,6 +3,8 @@ package code;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +13,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 
 import java.awt.*;
 
@@ -50,18 +53,18 @@ public class Game extends GameCore
 
     TileMap tmap = new TileMap();	// Our tile map, note that we load it in init()
     
-    long total;         			// The score will be the total time elapsed since a crash
-    
-    
+    long total = 0;  // The score will be the total time elapsed since a crash
+       
     //Parallax images taken from free licensing publisher https://digitalmoons.itch.io/free-parallax-desert-background-seamless
     private Image bgImage1, bgImage2, bgImage3, bgImage4; //background images
+    private Image playBtn;
     //Used to move background at different speeds to create realistic illusion 
     private int bg1location = 0;
     private int bg2location;
     private int fg1location = 0;
     private int fg2location;
     
-    private static int offsetMapX = 200;
+    private static int offsetMapX;
    
     /**
 	 * The obligatory main method that creates
@@ -73,7 +76,8 @@ public class Game extends GameCore
 
         Game gct = new Game();
         gct.init();
-        gct.run(false,screenWidth,screenHeight);      
+        gct.run(false,screenWidth,screenHeight);   
+      
     } 
 
     /**
@@ -104,6 +108,8 @@ public class Game extends GameCore
 			bgImage3 = bgImage3.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
 			bgImage4 = ImageIO.read(new File("src/images/Desert.png"));
 			bgImage4 = bgImage4.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
+			playBtn = ImageIO.read(new File("src/images/PlayButton.png"));
+			playBtn = playBtn.getScaledInstance(screenWidth/5, screenHeight/8, Image.SCALE_SMOOTH);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -147,7 +153,7 @@ public class Game extends GameCore
      */
     public void initialiseGame()
     {
-    	total = 0;
+    	offsetMapX = 200;
         player.setX(64);
         player.setY(200);
         player.setVelocityX(0);
@@ -163,7 +169,7 @@ public class Game extends GameCore
     {    	
     	// Be careful about the order in which you draw objects - you
     	// should draw the background first, then work your way 'forward'
-    	
+
     	
     	// First work out how much we need to shift the view 
     	// in order to see where the player is.
@@ -195,6 +201,7 @@ public class Game extends GameCore
         player.draw(g);
            
         // Apply offsets to tile map and draw  it, move background left
+        
         tmap.draw(g,offsetMapX,0); 
         
         if(pause == false) {
@@ -221,6 +228,10 @@ public class Game extends GameCore
 	        g.setColor(Color.white);
 	        g.drawString(debug, 40, 50);
         }  
+        
+    	if(pause == true) {
+    		g.drawImage(playBtn, 200, 200, null); 
+    	}
     }
 
     /**
@@ -233,6 +244,8 @@ public class Game extends GameCore
     	player.setAnimationSpeed(1.0f);
         // Now update the sprites animation and position
         player.update(elapsed);
+        
+        total++;
         
     	if(pause == false) {	
 	        // Make adjustments to the speed of the sprite due to gravity
@@ -301,12 +314,16 @@ public class Game extends GameCore
     	}  	
     	if (key == KeyEvent.VK_S)
     	{
-    		// Example of playing a sound as a thread
-    		Sound s = new Sound("src/sounds/caw.wav");
-    		s.start();
+    		caw();
     	}
     }
-
+    
+    //Makes a bird noise
+    public void caw() {
+		Sound s = new Sound("src/sounds/caw.wav");
+		s.start();
+    }
+    
     public boolean boundingBoxCollision(Sprite s1, Sprite s2)
     {
     	return false;   	
@@ -354,12 +371,14 @@ public class Game extends GameCore
 	                @Override
 	                public void run() {
 	                	//Start new level once animation done or exit
-	                	System.exit(0); //TODO change to next level
+	                	changeLevel();
+	                	initialiseGame();
+	                	cancel();
 	                }
 	            };
 	            Timer timer = new Timer("MyTimer");
 	            //After two seconds, execute timer function
-	            timer.scheduleAtFixedRate(timerTask, 2000, 30000);
+	            timer.scheduleAtFixedRate(timerTask, 2000, 1000);
 				break;
     	    }
         	
@@ -368,22 +387,23 @@ public class Game extends GameCore
     	
 
     //If collision happens
-    private void handleCollison(Sprite s) {
+    private void handleCollison(Sprite s) {	
+		caw();
 		pause = true;
-        TimerTask timerTask2 = new TimerTask() {
+		total = 0;
+        TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
             	//unpauses sprite
             	pause = false;
             }
         };
-        Timer timer2 = new Timer("MyTimer");
+        Timer timer = new Timer("MyTimer");
         //After one seconds, execute timer function
-        timer2.scheduleAtFixedRate(timerTask2, 1000, 30000);
+        timer.scheduleAtFixedRate(timerTask, 1000, 30000);
 		s.stop();
 		offsetMapX = offsetMapX + s.getWidth() * 3;
 		s.setY(getWidth()/2 - s.getHeight());
-		System.out.println("COLLISION");
     }
 
 
@@ -404,4 +424,13 @@ public class Game extends GameCore
 		}
 	}
 
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		if(pause == true) pause = false;
+	}
+	
+	public void changeLevel() {
+		tmap.loadMap("src/maps", "map2.txt");
+		pause = true;
+	}
 }

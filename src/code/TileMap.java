@@ -90,6 +90,14 @@ public class TileMap
 		return mapWidth * tileWidth;
 	}
 	
+	public static void flipInPlace(Object[][] theArray) {
+	    for(int i = 0; i < (theArray.length / 2); i++) {
+	        Object[] temp = theArray[i];
+	        theArray[i] = theArray[theArray.length - i - 1];
+	        theArray[theArray.length - i - 1] = temp;
+	    }
+	}
+
 	/**
 	 * Loads a 'mapfile' that is contained in the given 'folder'. It is expected that
 	 * the images associated with the map will also be in 'folder'.
