@@ -1,11 +1,11 @@
 package code;
 
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,9 +13,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import javax.imageio.ImageIO;
-import javax.swing.JButton;
-
-import java.awt.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -59,8 +56,8 @@ public class Game extends GameCore
     private Image bgImage1, bgImage2, bgImage3, bgImage4; //background images
     private Image playBtn;
     //Used to move background at different speeds to create realistic illusion 
-    private int bg1location = 0;
-    private int bg2location;
+    private float bg1location = 0;
+    private float bg2location;
     private int fg1location = 0;
     private int fg2location;
     
@@ -101,7 +98,6 @@ public class Game extends GameCore
 			//Width + 3 to avoid cutting when repeating image, loaded in here to reduce lag in draw method
 			bgImage1 = ImageIO.read(new File("src/images/Sky.png"));
 			bgImage1 = bgImage1.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
-			System.out.println(getWidth());
 			bgImage2 = ImageIO.read(new File("src/images/Moon.png"));
 			bgImage2 = bgImage2.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
 			bgImage3 = ImageIO.read(new File("src/images/Mountains.png"));
@@ -185,8 +181,8 @@ public class Game extends GameCore
         g.drawImage(bgImage1, 0, 0, null); 
         g.drawImage(bgImage2, 0, 0, null);
         
-        g.drawImage(bgImage3, bg1location, 0, null);
-        g.drawImage(bgImage3, bg2location, 0, null);
+        g.drawImage(bgImage3, (int) bg1location, 0, null);
+        g.drawImage(bgImage3, (int) bg2location, 0, null);
         
         g.drawImage(bgImage4, fg1location, 0, null);
         g.drawImage(bgImage4, fg2location, 0, null);
@@ -194,7 +190,7 @@ public class Game extends GameCore
         // Apply offsets to sprites then draw them
         for (Sprite s: clouds)
         {
-        	s.setOffsets(0,0);
+        	s.setOffsets((int) bg1location,0);
         	s.draw(g);
         }
         
@@ -207,7 +203,7 @@ public class Game extends GameCore
         if(pause == false) {
         	offsetMapX--;
         	
-    	    bg1location--; bg2location--;
+    	    bg1location-=0.5; bg2location-=0.5;
     	    fg1location-=3; fg2location-=3;
             
             if(bg1location<-screenWidth) bg1location = screenWidth;
@@ -431,6 +427,5 @@ public class Game extends GameCore
 	
 	public void changeLevel() {
 		tmap.loadMap("src/maps", "map2.txt");
-		pause = true;
 	}
 }
