@@ -68,11 +68,11 @@ public abstract class GameCore extends JFrame implements KeyListener, MouseListe
         try 
         {
             init(full,x,y);
-            gameLoop();
+            
         }
         finally 
 		{ 
-        	
+        	gameLoop();
         }
     }
 

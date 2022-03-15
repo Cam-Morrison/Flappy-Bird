@@ -2,10 +2,12 @@ package code;
 
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,7 +25,7 @@ import javax.imageio.ImageIO;
 // override this with your own event handler.
 
 /**
- * @author David Cairns
+ * @author Cameron Morrison
  *
  */
 @SuppressWarnings("serial")
@@ -41,12 +43,15 @@ public class Game extends GameCore
     private boolean flap = false;
     private boolean pause = true;
     private boolean debugMode = true;
+    private boolean checkCollision;
     
     // Game resources
-    Animation landing;
+    Animation bird;
+    Animation coin;
+    Animation rockAnim;
     
     Sprite	player = null;
-    ArrayList<Sprite> clouds = new ArrayList<Sprite>();
+    ArrayList<Sprite> rocks = new ArrayList<Sprite>();
 
     TileMap tmap = new TileMap();	// Our tile map, note that we load it in init()
     
@@ -56,10 +61,15 @@ public class Game extends GameCore
     private Image bgImage1, bgImage2, bgImage3, bgImage4; //background images
     private Image playBtn;
     //Used to move background at different speeds to create realistic illusion 
-    private float bg1location = 0;
-    private float bg2location;
+    private int bg1location = 0;
+    private int bg2location;
     private int fg1location = 0;
     private int fg2location;
+    
+    private double rotation = 90;
+    private double scale = 1;
+   
+    
     
     private static int offsetMapX;
    
@@ -113,31 +123,24 @@ public class Game extends GameCore
         // Create a set of background sprites that we can 
         // rearrange to give the illusion of motion
 
-        landing = new Animation();
-        landing.loadAnimationFromSheet("src/images/landbird.png", 4, 1, 60);
-        
+        bird = new Animation();
+        bird.loadAnimationFromSheet("src/images/landbird.png", 4, 1, 60);
+     
         // Initialise the player with an animation
-        player = new Sprite(landing);
+        player = new Sprite(bird);
         
-        // Load a single cloud animation
-        Animation ca = new Animation();
-        ca.addFrame(loadImage("src/images/cloud.png"), 1000);
+        rockAnim = new Animation();
+        rockAnim.addFrame(loadImage("src/images/rock.png"), 1000);
         
-        // Create 3 clouds at random positions off the screen
-        // to the right
-        for (int c=0; c<3; c++)
+        // Create 3 rocks at random positions off the screen to the right
+        for (int i = 0; i < 3; i++)
         {
-        	s = new Sprite(ca);
-        	s.setX(screenWidth + (int)(Math.random()*200.0f));
-        	s.setY(30 + (int)(Math.random()*150.0f));
-        	s.setVelocityX(-0.02f);
-        	s.show();
-        	clouds.add(s);
+        	s = new Sprite(rockAnim);
+        	rocks.add(s);
         }
 
         initialiseGame();
-        System.out.println(tmap);
-        
+       
         bg2location = screenWidth;
         fg2location = screenWidth;   
     }
@@ -155,6 +158,11 @@ public class Game extends GameCore
         player.setVelocityX(0);
         player.setVelocityY(0);
         player.show();
+        checkCollision = true;
+        for(Sprite s : rocks) {
+        	s.show();
+        	deployAsteroid(s);
+        }
     }
     
     
@@ -181,29 +189,30 @@ public class Game extends GameCore
         g.drawImage(bgImage1, 0, 0, null); 
         g.drawImage(bgImage2, 0, 0, null);
         
-        g.drawImage(bgImage3, (int) bg1location, 0, null);
-        g.drawImage(bgImage3, (int) bg2location, 0, null);
+        g.drawImage(bgImage3, bg1location, 0, null);
+        g.drawImage(bgImage3, bg2location, 0, null);
         
         g.drawImage(bgImage4, fg1location, 0, null);
         g.drawImage(bgImage4, fg2location, 0, null);
          
-        // Apply offsets to sprites then draw them
-        for (Sprite s: clouds)
-        {
-        	s.setOffsets((int) bg1location,0);
-        	s.draw(g);
+        for (Sprite s: rocks){
+	    	s.setRotation(rotation);
+	    	s.drawTransformed(g);
+	    	
+        	if(s.getX() < -50) {
+        		deployAsteroid(s);
+        	}
         }
         
         player.draw(g);
            
         // Apply offsets to tile map and draw  it, move background left
-        
         tmap.draw(g,offsetMapX,0); 
         
         if(pause == false) {
         	offsetMapX--;
         	
-    	    bg1location-=0.5; bg2location-=0.5;
+    	    bg1location--; bg2location--;
     	    fg1location-=3; fg2location-=3;
             
             if(bg1location<-screenWidth) bg1location = screenWidth;
@@ -211,18 +220,24 @@ public class Game extends GameCore
             if(fg1location<-screenWidth) fg1location = screenWidth;
             if(fg2location<-screenWidth) fg2location = screenWidth;
         }
-        
+          
         // Show score and status information
         String msg = String.format("Score: %d", total/100);
-        g.setColor(Color.white);
-        g.drawString(msg, getWidth() - 80, 50);
+        g.setFont(new Font("Verdana", Font.BOLD, 18)); 
+        g.setColor(Color.WHITE);
+        g.drawString(msg, screenWidth - 120, 50);
         
-        // debug mode
+
         if(debugMode) {
         	player.drawBoundingCircle(g);
-	        String debug = "FPS: " + (int)getFPS() + "     X: " + ((int)player.getX() + offsetMapX) + "     Y: " + (int)player.getY();
+	        String debug = "FPS: " + (int)getFPS();
 	        g.setColor(Color.white);
 	        g.drawString(debug, 40, 50);
+	        for(Sprite s: rocks) {
+	        	s.drawBoundingCircle(g);
+	        	g.drawString("X:"+(int)s.getX(), s.getX(), s.getY());
+	        }
+	        g.drawString("Y:"+(int)player.getY(), player.getX(), player.getY());
         }  
         
     	if(pause == true) {
@@ -230,20 +245,28 @@ public class Game extends GameCore
     	}
     }
 
-    /**
-     * Update any sprites and check for collisions
+    private void deployAsteroid(Sprite s) {
+    	s.setX(screenWidth + (int)(Math.random()*200.0f));
+    	s.setY((int)Math.floor(Math.random()*(screenHeight-s.getHeight())+0));
+    	s.setVelocityX(-0.1f);
+	}
+
+	/**
+     * Update any sprite's and check for collisions
      * 
      * @param elapsed The elapsed time between this call and the previous call of elapsed
      */    
     public void update(long elapsed)
     {
     	player.setAnimationSpeed(1.0f);
-        // Now update the sprites animation and position
+        // Now update the sprite's animation and position
         player.update(elapsed);
         
-        total++;
+         
         
     	if(pause == false) {	
+    		//Increase score
+    		total++;
 	        // Make adjustments to the speed of the sprite due to gravity
 	        player.setVelocityY(player.getVelocityY()+(gravity*elapsed));   	
 	       
@@ -253,9 +276,18 @@ public class Game extends GameCore
 	       		player.setVelocityY(-0.075f);
 	       	}
 	                
-	       	for (Sprite s: clouds)
+	       	for (Sprite s: rocks) {
 	       		s.update(elapsed);
-	       
+	       		if(boundingBoxCollision(player, s)) {
+	       			if(checkCollision) {
+		       			handleCollison(player);
+		       			s.hide();
+		       			deployAsteroid(s);
+	       			}
+	       		}
+	       	}
+	       	rotation++;
+	       	
 	        // Then check for any collisions that may have occurred
 	        handleScreenEdge(player, tmap, elapsed);
 	        checkTileCollision(player, tmap);    
@@ -308,9 +340,9 @@ public class Game extends GameCore
     	if (key == KeyEvent.VK_UP) {
     		flap = true; 
     	}  	
-    	if (key == KeyEvent.VK_S)
+    	if(key == KeyEvent.VK_SPACE)
     	{
-    		caw();
+    		pause = false;
     	}
     }
     
@@ -322,7 +354,13 @@ public class Game extends GameCore
     
     public boolean boundingBoxCollision(Sprite s1, Sprite s2)
     {
-    	return false;   	
+    	 int dx,dy,minimum;   
+    	   
+    	  dx = (int) (s1.getX() - s2.getX()); 
+    	  dy = (int) (s1.getY() - s2.getY()); 
+    	  minimum = (int) (s1.getRadius() + s2.getRadius()); 
+    	    
+    	  return (((dx * dx) + (dy * dy)) < (minimum * minimum));
     }
     
     /**
@@ -335,22 +373,18 @@ public class Game extends GameCore
 
 	public void checkTileCollision(Sprite s, TileMap tmap)
     {    	
-
-    	float radius = s.getRadius();
-    	float sx = s.getX() + radius - offsetMapX;
-    	float sy = s.getY() + radius;  
-    	// Find out how wide and how tall a tile is
-    	float tileWidth = tmap.getTileWidth();
-    	float tileHeight = tmap.getTileHeight();
+    	float sx = s.getX() + s.getRadius() - offsetMapX;
+    	float sy = s.getY() + s.getRadius();  
     	
     	char ch;
     	int xtile, ytile;
     	double x, y;
     	for(int angle = 0; angle < 6; angle++) {
-    		x = sx + (radius * Math.cos(Math.toRadians(angle * 60)));
-    		y = sy + (radius * Math.sin(Math.toRadians(angle * 60)));
-        	xtile = (int)(x /  tileWidth);
-        	ytile = (int)(y / tileHeight);
+    		x = sx + (s.getRadius() * Math.cos(Math.toRadians(angle * 60)));
+    		y = sy + (s.getRadius() * Math.sin(Math.toRadians(angle * 60)));
+    		// Find out how wide and how tall a tile is
+        	xtile = (int)(x /  tmap.getTileWidth());
+        	ytile = (int)(y / tmap.getTileHeight());
     		ch = tmap.getTileChar(xtile, ytile);
     		if(ch == '.') continue;	
         	if (ch == 'p' || ch == 'b' || ch == 't') {
@@ -361,6 +395,7 @@ public class Game extends GameCore
 				if(offsetMapX > -500) {
 					continue;
 				}
+				checkCollision = false;
 	    		s.setVelocityY(0);
 	    		s.setVelocityX(0.3f);
 	            TimerTask timerTask = new TimerTask() {
@@ -369,12 +404,15 @@ public class Game extends GameCore
 	                	//Start new level once animation done or exit
 	                	changeLevel();
 	                	initialiseGame();
+	                	pause = false;
 	                	cancel();
+	                	
 	                }
 	            };
 	            Timer timer = new Timer("MyTimer");
 	            //After two seconds, execute timer function
 	            timer.scheduleAtFixedRate(timerTask, 2000, 1000);
+	            pause = true;
 				break;
     	    }
         	
@@ -387,6 +425,8 @@ public class Game extends GameCore
 		caw();
 		pause = true;
 		total = 0;
+		for(Sprite rock : rocks)
+			deployAsteroid(rock);
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
@@ -399,7 +439,7 @@ public class Game extends GameCore
         timer.scheduleAtFixedRate(timerTask, 1000, 30000);
 		s.stop();
 		offsetMapX = offsetMapX + s.getWidth() * 3;
-		s.setY(getWidth()/2 - s.getHeight());
+		s.setY(screenWidth/2 - s.getHeight());
     }
 
 
@@ -415,7 +455,6 @@ public class Game extends GameCore
 			case KeyEvent.VK_UP     : flap = false; break;
 			case KeyEvent.VK_1 		: debugMode = !debugMode; System.out.println(debugMode); break;
 			case KeyEvent.VK_2 		: offsetMapX = -1650; break;
-			case KeyEvent.VK_SPACE  : pause = !pause; player.stop(); break;
 			default :  break;
 		}
 	}
