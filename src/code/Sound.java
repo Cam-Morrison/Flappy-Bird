@@ -28,6 +28,9 @@ public class Sound extends Thread {
 			DataLine.Info info = new DataLine.Info(Clip.class, format);
 			Clip clip = (Clip)AudioSystem.getLine(info);
 			clip.open(stream);
+			FloatControl gainControl = 
+				(FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+				gainControl.setValue(-10.0f); // Reduce volume by 10 decibels.
 			clip.start();
 			Thread.sleep(100);
 			while (clip.isRunning()) { Thread.sleep(100); }
@@ -35,6 +38,5 @@ public class Sound extends Thread {
 		}
 		catch (Exception e) {	}
 		finished = true;
-
 	}
 }
