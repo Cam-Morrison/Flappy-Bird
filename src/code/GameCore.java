@@ -182,34 +182,32 @@ public abstract class GameCore extends JFrame implements KeyListener, MouseListe
 	/**
 	 * Handler for the keyTyped event (empty)
 	 */
-	public void keyTyped(KeyEvent e) {	}
+	public void keyTyped(KeyEvent e) { }
 	
-	/*
-	 * Mouse click handler 
+	/**
+	 * Handler for the mouseClicked event (empty)
 	 */
-	public void mouseClicked(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-	public void mousePressed(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void mouseClicked(MouseEvent e) { }
+	
+	/**
+	 * Handler for the mousePressed event (empty)
+	 */
+	public void mousePressed(MouseEvent e) { }
+	
+	/**
+	 * Handler for the mouseReleased event (empty)
+	 */
+	public void mouseReleased(MouseEvent e) { }
+	
+	/**
+	 * Handler for the mouseEntered event (empty)
+	 */
+	public void mouseEntered(MouseEvent e) { }
 
-	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
+	/**
+	 * Handler for the mouseExited event (empty)
+	 */
+	public void mouseExited(MouseEvent e) { }
 		
     /** 
      * Updates the state of the game/animation based on the

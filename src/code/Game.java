@@ -5,9 +5,11 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,7 +28,6 @@ import javax.imageio.ImageIO;
 
 /**
  * @author Cameron Morrison
- *
  */
 @SuppressWarnings("serial")
 
@@ -57,20 +58,14 @@ public class Game extends GameCore
     
     long total = 0;  // The score will be the total time elapsed since a crash
        
-    //Parallax images taken from free licensing publisher https://digitalmoons.itch.io/free-parallax-desert-background-seamless
-    private Image bgImage1, bgImage2, bgImage3, bgImage4; //background images
-    private Image playBtn;
+    /*Parallax images taken from free licensing publisher 
+    https://digitalmoons.itch.io/free-parallax-desert-background-seamless and a pause button*/
+    private Image bgImage1, bgImage2, bgImage3, bgImage4, playBtn; 
     //Used to move background at different speeds to create realistic illusion 
-    private int bg1location = 0;
-    private int bg2location;
-    private int fg1location = 0;
-    private int fg2location;
+    private int bg1location = 0, fg1location = 0;
+    private int bg2location = screenWidth, fg2location = screenWidth;
     
     private double rotation = 90;
-    private double scale = 1;
-   
-    
-    
     private static int offsetMapX;
    
     /**
@@ -94,7 +89,6 @@ public class Game extends GameCore
     public void init()
     {         
         Sprite s;	// Temporary reference to a sprite
-
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("src/maps", "map.txt");
         
@@ -116,33 +110,22 @@ public class Game extends GameCore
 			bgImage4 = bgImage4.getScaledInstance(screenWidth + 3, screenHeight, Image.SCALE_FAST);
 			playBtn = ImageIO.read(new File("src/images/PlayButton.png"));
 			playBtn = playBtn.getScaledInstance(screenWidth/5, screenHeight/8, Image.SCALE_SMOOTH);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		} catch (IOException e) {}
 		
-        // Create a set of background sprites that we can 
-        // rearrange to give the illusion of motion
-
         bird = new Animation();
         bird.loadAnimationFromSheet("src/images/landbird.png", 4, 1, 60);
-     
-        // Initialise the player with an animation
         player = new Sprite(bird);
-        
+
         rockAnim = new Animation();
         rockAnim.addFrame(loadImage("src/images/rock.png"), 1000);
-        
         // Create 3 rocks at random positions off the screen to the right
         for (int i = 0; i < 3; i++)
         {
         	s = new Sprite(rockAnim);
+        	
         	rocks.add(s);
         }
-
         initialiseGame();
-       
-        bg2location = screenWidth;
-        fg2location = screenWidth;   
     }
 
     /**
@@ -160,31 +143,15 @@ public class Game extends GameCore
         player.show();
         checkCollision = true;
         for(Sprite s : rocks) {
-        	s.show();
         	deployAsteroid(s);
         }
     }
-    
     
     /**
      * Draw the current state of the game
      */
     public void draw(Graphics2D g)
     {    	
-    	// Be careful about the order in which you draw objects - you
-    	// should draw the background first, then work your way 'forward'
-
-    	
-    	// First work out how much we need to shift the view 
-    	// in order to see where the player is.
-
-        // If relative, adjust the offset so that
-        // it is relative to the player
-
-        g.setColor(Color.white);
-        g.fillRect(0, 0, screenWidth, screenHeight);
-
-        
         //Parallax background
         g.drawImage(bgImage1, 0, 0, null); 
         g.drawImage(bgImage2, 0, 0, null);
@@ -239,7 +206,6 @@ public class Game extends GameCore
 	        }
 	        g.drawString("Y:"+(int)player.getY(), player.getX(), player.getY());
         }  
-        
     	if(pause == true) {
     		g.drawImage(playBtn, 200, 200, null); 
     	}
@@ -249,6 +215,7 @@ public class Game extends GameCore
     	s.setX(screenWidth + (int)(Math.random()*200.0f));
     	s.setY((int)Math.floor(Math.random()*(screenHeight-s.getHeight())+0));
     	s.setVelocityX(-0.1f);
+    	s.show();
 	}
 
 	/**
@@ -261,8 +228,6 @@ public class Game extends GameCore
     	player.setAnimationSpeed(1.0f);
         // Now update the sprite's animation and position
         player.update(elapsed);
-        
-         
         
     	if(pause == false) {	
     		//Increase score
@@ -294,7 +259,6 @@ public class Game extends GameCore
     	}
     }
     
-    
     /**
      * Checks and handles collisions with the edge of the screen
      * 
@@ -323,8 +287,6 @@ public class Game extends GameCore
         }
     }
     
-    
-     
     /**
      * Override of the keyPressed event defined in GameCore to catch our
      * own events
@@ -333,16 +295,11 @@ public class Game extends GameCore
      */
     public void keyPressed(KeyEvent e) 
     { 
-    	int key = e.getKeyCode();
-    	
-    	if (key == KeyEvent.VK_ESCAPE) stop();
-    	
-    	if (key == KeyEvent.VK_UP) {
-    		flap = true; 
-    	}  	
-    	if(key == KeyEvent.VK_SPACE)
-    	{
-    		pause = false;
+    	switch(e.getKeyCode()) {
+    	case KeyEvent.VK_ESCAPE	: stop(); return;
+    	case KeyEvent.VK_UP     : flap = true; return;
+    	case KeyEvent.VK_SPACE  : pause = false; return;	
+    	default					: return;	
     	}
     }
     
@@ -375,50 +332,49 @@ public class Game extends GameCore
     {    	
     	float sx = s.getX() + s.getRadius() - offsetMapX;
     	float sy = s.getY() + s.getRadius();  
-    	
-    	char ch;
     	int xtile, ytile;
     	double x, y;
+    	
     	for(int angle = 0; angle < 6; angle++) {
     		x = sx + (s.getRadius() * Math.cos(Math.toRadians(angle * 60)));
     		y = sy + (s.getRadius() * Math.sin(Math.toRadians(angle * 60)));
     		// Find out how wide and how tall a tile is
         	xtile = (int)(x /  tmap.getTileWidth());
         	ytile = (int)(y / tmap.getTileHeight());
-    		ch = tmap.getTileChar(xtile, ytile);
-    		if(ch == '.') continue;	
-        	if (ch == 'p' || ch == 'b' || ch == 't') {
-        		handleCollison(s);
-    	        break;
-    	    } 
-        	if(ch == '?'){
-				if(offsetMapX > -500) {
-					continue;
-				}
-				checkCollision = false;
-	    		s.setVelocityY(0);
-	    		s.setVelocityX(0.3f);
-	            TimerTask timerTask = new TimerTask() {
-	                @Override
-	                public void run() {
-	                	//Start new level once animation done or exit
-	                	changeLevel();
-	                	initialiseGame();
-	                	pause = false;
-	                	cancel();
-	                	
-	                }
-	            };
-	            Timer timer = new Timer("MyTimer");
-	            //After two seconds, execute timer function
-	            timer.scheduleAtFixedRate(timerTask, 2000, 1000);
-	            pause = true;
-				break;
-    	    }
-        	
+
+    		switch(tmap.getTileChar(xtile, ytile)) {
+	    		case '.':
+	    			continue;
+	    		case 'p':
+	    		case 'b':
+	    		case 't':
+	        		handleCollison(s);
+	    	        return;
+	    		case '?':
+					if(offsetMapX > -500) {
+						return;
+					}
+					checkCollision = false;
+		    		s.setVelocityY(0);
+		    		s.setVelocityX(0.3f);
+		            TimerTask timerTask = new TimerTask() {
+		                @Override
+		                public void run() {
+		                	//Start new level once animation done
+		                	changeLevel();
+		                	initialiseGame();
+		                	pause = false;
+		                	cancel();	
+		                }
+		            };
+		            Timer timer = new Timer("MyTimer");
+		            //After two seconds, execute timer function
+		            timer.scheduleAtFixedRate(timerTask, 2000, 1000);
+		            pause = true;
+					return;	
+    		}
         }
     }
-    	
 
     //If collision happens
     private void handleCollison(Sprite s) {	
@@ -430,7 +386,7 @@ public class Game extends GameCore
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-            	//unpauses sprite
+            	//resume sprite
             	pause = false;
             }
         };
@@ -444,24 +400,20 @@ public class Game extends GameCore
 
 
 	public void keyReleased(KeyEvent e) { 
-
-		int key = e.getKeyCode();
-
-		// Switch statement instead of lots of ifs...
-		// Need to use break to prevent fall through.
-		switch (key)
-		{
-			case KeyEvent.VK_ESCAPE : stop(); break;
-			case KeyEvent.VK_UP     : flap = false; break;
-			case KeyEvent.VK_1 		: debugMode = !debugMode; System.out.println(debugMode); break;
-			case KeyEvent.VK_2 		: offsetMapX = -1650; break;
-			default :  break;
+		
+		switch (e.getKeyCode()){
+			case KeyEvent.VK_ESCAPE : stop(); return;
+			case KeyEvent.VK_UP     : flap = false; return;
+			case KeyEvent.VK_1 		: debugMode = !debugMode; return;
+			case KeyEvent.VK_2 		: offsetMapX = -1650; return;
+			default 				: return;
 		}
 	}
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
-		if(pause == true) pause = false;
+        //Point p = e.getPoint();
+        //TODO Sprite blastWind = new Sprite();
 	}
 	
 	public void changeLevel() {
